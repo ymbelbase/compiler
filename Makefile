@@ -1,37 +1,38 @@
-# ============================================================
-#  Makefile – build the Flex/Bison arithmetic evaluator
-#
-#  Usage:
-#    make          – build the 'calc' binary
-#    make clean    – remove all generated files
-#    make run      – build then launch the evaluator
-# ============================================================
+CXX       = g++
+LLVM_CFG  = llvm-config-15
 
-CXX      = g++
-CXXFLAGS = -Wall -Wextra -std=c++17
+CXXFLAGS  = -Wall -Wextra -std=c++17 \
+            $(shell $(LLVM_CFG) --cxxflags) \
+            -Wno-unused-parameter \
+            -Wno-unused-function
 
-TARGET   = calc
+LDFLAGS   = $(shell $(LLVM_CFG) --ldflags)
+LLVM_LIBS = $(shell $(LLVM_CFG) --libs core support analysis) \
+            $(shell $(LLVM_CFG) --system-libs)
+
+TARGET = calc
 
 all: $(TARGET)
 
-# Step 1 – Run Bison to produce parser.tab.c + parser.tab.h
-#   -d  : write the header file (token definitions for the lexer)
-#   -v  : write parser.output (human-readable automaton report)
 parser.tab.c parser.tab.h: parser.y
 	bison -d -v parser.y
 
-# Step 2 – Run Flex to produce lex.yy.c
 lex.yy.c: lexer.l parser.tab.h
 	flex lexer.l
 
-# Step 3 – Compile and link everything
-$(TARGET): parser.tab.c lex.yy.c
-	$(CXX) $(CXXFLAGS) -o $@ parser.tab.c lex.yy.c -lfl
+# -x c++ forces g++ to treat the Flex-generated .c file as C++
+# so it can include LLVM's C++ headers without a language mismatch.
+$(TARGET): parser.tab.c lex.yy.c codegen.h llvm_includes.h
+	$(CXX) $(CXXFLAGS) -x c++ -o $@ parser.tab.c lex.yy.c \
+	    $(LDFLAGS) $(LLVM_LIBS)
 
 run: $(TARGET)
 	./$(TARGET)
 
-clean:
-	rm -f $(TARGET) parser.tab.c parser.tab.h lex.yy.c parser.output
+execute: output.ll
+	lli-15 output.ll
 
-.PHONY: all run clean
+clean:
+	rm -f $(TARGET) parser.tab.c parser.tab.h lex.yy.c parser.output output.ll
+
+.PHONY: all run execute clean

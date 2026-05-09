@@ -5,8 +5,8 @@ Grammar
     1 input: ε
     2      | input line
 
-    3 line: '\n'
-    4     | expr '\n'
+    3 line: NEWLINE
+    4     | expr NEWLINE
 
     5 expr: INTEGER
     6     | expr '+' expr
@@ -20,7 +20,6 @@ Grammar
 Terminals, with rules where they appear
 
     $end (0) 0
-    '\n' (10) 3 4
     '(' (40) 10
     ')' (41) 10
     '*' (42) 8
@@ -28,8 +27,9 @@ Terminals, with rules where they appear
     '-' (45) 7 11
     '/' (47) 9
     error (256)
-    INTEGER <ival> (258) 5
-    UMINUS (259)
+    INTEGER <val> (258) 5
+    NEWLINE (259) 3 4
+    UMINUS (260)
 
 
 Nonterminals, with rules where they appear
@@ -42,7 +42,7 @@ Nonterminals, with rules where they appear
     line (14)
         on left: 3 4
         on right: 2
-    expr <ival> (15)
+    expr <val> (15)
         on left: 5 6 7 8 9 10 11
         on right: 4 6 7 8 9 10 11
 
@@ -63,8 +63,8 @@ State 1
 
     $end     shift, and go to state 2
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
-    '\n'     shift, and go to state 5
+    NEWLINE  shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     line  go to state 7
@@ -87,20 +87,20 @@ State 3
 
 State 4
 
-   11 expr: '-' • expr
+    3 line: NEWLINE •
 
-    INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
-    '('      shift, and go to state 6
-
-    expr  go to state 9
+    $default  reduce using rule 3 (line)
 
 
 State 5
 
-    3 line: '\n' •
+   11 expr: '-' • expr
 
-    $default  reduce using rule 3 (line)
+    INTEGER  shift, and go to state 3
+    '-'      shift, and go to state 5
+    '('      shift, and go to state 6
+
+    expr  go to state 9
 
 
 State 6
@@ -108,7 +108,7 @@ State 6
    10 expr: '(' • expr ')'
 
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     expr  go to state 10
@@ -123,17 +123,17 @@ State 7
 
 State 8
 
-    4 line: expr • '\n'
+    4 line: expr • NEWLINE
     6 expr: expr • '+' expr
     7     | expr • '-' expr
     8     | expr • '*' expr
     9     | expr • '/' expr
 
-    '+'   shift, and go to state 11
-    '-'   shift, and go to state 12
-    '*'   shift, and go to state 13
-    '/'   shift, and go to state 14
-    '\n'  shift, and go to state 15
+    NEWLINE  shift, and go to state 11
+    '+'      shift, and go to state 12
+    '-'      shift, and go to state 13
+    '*'      shift, and go to state 14
+    '/'      shift, and go to state 15
 
 
 State 9
@@ -155,62 +155,62 @@ State 10
     9     | expr • '/' expr
    10     | '(' expr • ')'
 
-    '+'  shift, and go to state 11
-    '-'  shift, and go to state 12
-    '*'  shift, and go to state 13
-    '/'  shift, and go to state 14
+    '+'  shift, and go to state 12
+    '-'  shift, and go to state 13
+    '*'  shift, and go to state 14
+    '/'  shift, and go to state 15
     ')'  shift, and go to state 16
 
 
 State 11
 
+    4 line: expr NEWLINE •
+
+    $default  reduce using rule 4 (line)
+
+
+State 12
+
     6 expr: expr '+' • expr
 
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     expr  go to state 17
 
 
-State 12
+State 13
 
     7 expr: expr '-' • expr
 
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     expr  go to state 18
 
 
-State 13
+State 14
 
     8 expr: expr '*' • expr
 
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     expr  go to state 19
 
 
-State 14
+State 15
 
     9 expr: expr '/' • expr
 
     INTEGER  shift, and go to state 3
-    '-'      shift, and go to state 4
+    '-'      shift, and go to state 5
     '('      shift, and go to state 6
 
     expr  go to state 20
-
-
-State 15
-
-    4 line: expr '\n' •
-
-    $default  reduce using rule 4 (line)
 
 
 State 16
@@ -228,8 +228,8 @@ State 17
     8     | expr • '*' expr
     9     | expr • '/' expr
 
-    '*'  shift, and go to state 13
-    '/'  shift, and go to state 14
+    '*'  shift, and go to state 14
+    '/'  shift, and go to state 15
 
     $default  reduce using rule 6 (expr)
 
@@ -242,8 +242,8 @@ State 18
     8     | expr • '*' expr
     9     | expr • '/' expr
 
-    '*'  shift, and go to state 13
-    '/'  shift, and go to state 14
+    '*'  shift, and go to state 14
+    '/'  shift, and go to state 15
 
     $default  reduce using rule 7 (expr)
 

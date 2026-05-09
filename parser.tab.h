@@ -55,7 +55,8 @@ extern int yydebug;
     YYerror = 256,                 /* error  */
     YYUNDEF = 257,                 /* "invalid token"  */
     INTEGER = 258,                 /* INTEGER  */
-    UMINUS = 259                   /* UMINUS  */
+    NEWLINE = 259,                 /* NEWLINE  */
+    UMINUS = 260                   /* UMINUS  */
   };
   typedef enum yytokentype yytoken_kind_t;
 #endif
@@ -64,11 +65,11 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 38 "parser.y"
+#line 16 "parser.y"
 
-    int ival;   /* used by INTEGER tokens and expr non-terminals */
+    llvm::Value* val;
 
-#line 72 "parser.tab.h"
+#line 73 "parser.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

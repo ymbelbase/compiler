@@ -1,143 +1,109 @@
-/* ============================================================
- *  parser.y  –  Level 002
- *  Bison specification for a simple arithmetic expression parser.
- *
- *  Grammar (in informal BNF):
- *    input   : <empty> | input line
- *    line    : '\n' | expr '\n'
- *    expr    : expr '+' expr
- *            | expr '-' expr
- *            | expr '*' expr
- *            | expr '/' expr
- *            | '(' expr ')'
- *            | INTEGER
- *
- *  Operator precedence (lowest → highest):
- *    + -    (left-associative)
- *    * /    (left-associative)
- *    unary  (right-associative, handled via %right UMINUS)
- * ============================================================ */
-
 %{
-/* ---- C/C++ prologue ---------------------------------------- */
-#include <stdio.h>
-#include <stdlib.h>
+/* llvm_includes.h first — same rule as lexer.l */
+#include "llvm_includes.h"
+#include <cstdio>
+#include <cstdlib>
 
-/* Declarations for functions defined in the generated lexer    */
+/* LLVM global singletons — extern-declared in codegen.h */
+std::unique_ptr<llvm::LLVMContext> TheContext;
+std::unique_ptr<llvm::Module>      TheModule;
+std::unique_ptr<llvm::IRBuilder<>> Builder;
+
 int  yylex   (void);
-void yyerror (const char *s);
+void yyerror (const char* s) { fprintf(stderr, "Parser error: %s\n", s); }
 %}
 
-/* ==============================================================
- * Bison declarations
- * ============================================================== */
-
-/* %union defines the C type that yylval can hold.
- * Every token and non-terminal that carries a value must
- * declare which union member it uses.                           */
 %union {
-    int ival;   /* used by INTEGER tokens and expr non-terminals */
+    llvm::Value* val;
 }
 
-/* --- Token declarations ---
- * %token declares terminal symbols (tokens) produced by the lexer.
- * <ival> ties the token to the 'ival' member of the %union.    */
-%token <ival> INTEGER
+%token <val> INTEGER
+%token NEWLINE
+%type  <val> expr
 
-/* --- Precedence & associativity ---
- * Rules listed LATER have HIGHER precedence.
- * %left  → operators are left-associative  (a+b+c = (a+b)+c)
- * %right → operators are right-associative (a=b=c = a=(b=c))
- *
- * UMINUS is a fictitious token used only to assign the unary
- * minus a higher precedence than binary + and -.               */
 %left  '+' '-'
 %left  '*' '/'
 %right UMINUS
 
-/* --- Non-terminal type declarations ---
- * %type ties non-terminals to the 'ival' union member so the
- * parser knows how to pass values up the parse tree.           */
-%type <ival> expr
-
 %%
-/* ==============================================================
- * Grammar rules section
- *
- * Each rule has the form:
- *     LHS : RHS1 { action1 }
- *           | RHS2 { action2 }
- *           ;
- *
- * $1, $2, … refer to the semantic values of the 1st, 2nd, …
- * symbol on the right-hand side.
- * $$ is the semantic value of the left-hand side non-terminal.
- * ============================================================== */
 
-/* ---- Top-level rule -----------------------------------------
- * 'input' is the start symbol (first rule by default).
- * It matches zero or more lines, allowing the user to type
- * multiple expressions interactively.                           */
 input
     : /* empty */
     | input line
     ;
 
-/* ---- Line rule ----------------------------------------------
- * A blank newline is silently ignored.
- * An expression followed by newline is evaluated and printed.  */
 line
-    : '\n'
-    | expr '\n'         { printf("= %d\n", $1); }
+    : NEWLINE
+    | expr NEWLINE  {
+        llvm::Function*    printfFn = TheModule->getFunction("printf");
+        llvm::FunctionCallee printfCallee(printfFn->getFunctionType(), printfFn);
+        llvm::Value*       fmt = Builder->CreateGlobalStringPtr("%d\n", "fmt");
+        std::vector<llvm::Value*> args = { fmt, $1 };
+        Builder->CreateCall(printfCallee, args);
+      }
     ;
 
-/* ---- Expression rules ---------------------------------------
- * These six rules implement the full arithmetic grammar.
- * Bison uses the %left/%right/%right declarations above to
- * resolve shift/reduce conflicts in favour of the correct
- * associativity and precedence.                                 */
 expr
     : INTEGER               { $$ = $1; }
-
-    | expr '+' expr         { $$ = $1 + $3; }
-    | expr '-' expr         { $$ = $1 - $3; }
-    | expr '*' expr         { $$ = $1 * $3; }
-    | expr '/' expr         {
-                                if ($3 == 0) {
-                                    yyerror("division by zero");
-                                    $$ = 0;
-                                } else {
-                                    $$ = $1 / $3;
-                                }
-                            }
-
-    /* Parenthesised sub-expression: value is just the inner expr */
+    | expr '+' expr         { $$ = Builder->CreateAdd ($1, $3, "addtmp"); }
+    | expr '-' expr         { $$ = Builder->CreateSub ($1, $3, "subtmp"); }
+    | expr '*' expr         { $$ = Builder->CreateMul ($1, $3, "multmp"); }
+    | expr '/' expr         { $$ = Builder->CreateSDiv($1, $3, "divtmp"); }
     | '(' expr ')'          { $$ = $2; }
-
-    /* Unary minus: %prec UMINUS overrides the default precedence
-     * of '-' so that the unary form binds tighter than binary +/-.
-     * Example: -3 + 4  is  (-3) + 4, not -(3+4).               */
-    | '-' expr  %prec UMINUS  { $$ = -$2; }
+    | '-' expr  %prec UMINUS {
+        llvm::Value* zero = llvm::ConstantInt::get(
+            *TheContext, llvm::APInt(32, 0, true));
+        $$ = Builder->CreateSub(zero, $2, "negtmp");
+      }
     ;
 
 %%
-/* ==============================================================
- * User code section
- * ============================================================== */
 
-/* yyerror is called by the Bison-generated parser whenever a
- * syntax error is detected.                                     */
-void yyerror(const char *s) {
-    fprintf(stderr, "Parser error: %s\n", s);
-}
+int main() {
+    /* 1. Initialise LLVM */
+    TheContext = std::make_unique<llvm::LLVMContext>();
+    TheModule  = std::make_unique<llvm::Module>("calc_module", *TheContext);
+    Builder    = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 
-/* main() is the program entry point.
- * yyparse() drives the parser; it calls yylex() internally
- * every time it needs the next token.                          */
-int main(void) {
-    printf("Arithmetic Expression Evaluator\n");
-    printf("Enter an expression (e.g.  3 + 4 * 2) and press Enter.\n");
-    printf("Press Ctrl-D (EOF) to exit.\n\n");
+    /* 2. Define i32 @main() with an entry BasicBlock */
+    llvm::FunctionType* mainTy =
+        llvm::FunctionType::get(llvm::Type::getInt32Ty(*TheContext), false);
+    llvm::Function* mainFn =
+        llvm::Function::Create(mainTy, llvm::Function::ExternalLinkage,
+                               "main", *TheModule);
+    llvm::BasicBlock* entry =
+        llvm::BasicBlock::Create(*TheContext, "entry", mainFn);
+    Builder->SetInsertPoint(entry);
+
+    /* 3. Declare printf:  i32 @printf(ptr, ...) */
+    llvm::FunctionType* printfTy =
+        llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(*TheContext),
+            { llvm::PointerType::getUnqual(*TheContext) },
+            /*isVarArg=*/true);
+    TheModule->getOrInsertFunction("printf", printfTy);
+
+    /* 4. Parse — grammar actions emit IR */
     yyparse();
+
+    /* 5. ret i32 0 */
+    Builder->CreateRet(
+        llvm::ConstantInt::get(*TheContext, llvm::APInt(32, 0, true)));
+
+    /* 6. Verify */
+    std::string errStr;
+    llvm::raw_string_ostream errStream(errStr);
+    if (llvm::verifyModule(*TheModule, &errStream)) {
+        fprintf(stderr, "Module verification failed:\n%s\n", errStr.c_str());
+        return 1;
+    }
+
+    /* 7. Write output.ll */
+    std::error_code EC;
+    llvm::raw_fd_ostream out("output.ll", EC, llvm::sys::fs::OF_Text);
+    if (EC) { fprintf(stderr, "Cannot open output.ll: %s\n", EC.message().c_str()); return 1; }
+    TheModule->print(out, nullptr);
+    fprintf(stderr, "IR written to output.ll\n");
+    fprintf(stderr, "Run with:  lli-15 output.ll\n");
     return 0;
 }

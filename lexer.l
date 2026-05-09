@@ -1,5 +1,9 @@
 %{
+/* llvm_includes.h MUST come before parser.tab.h so that
+ * llvm::Value is a complete type when the %union is seen.   */
+#include "llvm_includes.h"
 #include "parser.tab.h"
+#include "codegen.h"
 #include <stdlib.h>
 #include <stdio.h>
 %}
@@ -8,7 +12,7 @@
 
 %%
 
-[0-9]+      { yylval.ival = atoi(yytext); return INTEGER; }
+[0-9]+      { yylval.val = makeInt(atoi(yytext)); return INTEGER; }
 
 "+"         { return '+'; }
 "-"         { return '-'; }
@@ -19,8 +23,8 @@
 
 [ \t\r]+    { }
 
-"\n"        { return '\n'; }
+"\n"        { return NEWLINE; }
 
-.           { fprintf(stderr, "Lexer error: unknown character '%c'\n", yytext[0]); }
+.           { fprintf(stderr, "Lexer error: unknown char '%c'\n", yytext[0]); }
 
 %%

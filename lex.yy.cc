@@ -1,5 +1,6 @@
+#line 2 "lex.yy.cc"
 
-#line 3 "lex.yy.c"
+#line 4 "lex.yy.cc"
 
 #define  YY_INT_ALIGNED short int
 
@@ -447,17 +448,22 @@ int yy_flex_debug = 0;
 #define YY_RESTORE_YY_MORE_OFFSET
 char *yytext;
 #line 1 "lexer.l"
-#line 2 "lexer.l"
-/* llvm_includes.h MUST come before parser.tab.h so that
- * llvm::Value is a complete type when the %union is seen.   */
-#include "llvm_includes.h"
-#include "parser.tab.h"
-#include "codegen.h"
+/* ============================================================
+ *  lexer.l  –  Level 004  (LLVM-aware)
+ *
+ *  Only one change from Level 001:
+ *    yylval is now llvm::Value* (set by api.value.type in parser.y).
+ *    The INTEGER rule calls makeInt() from codegen.h to create a
+ *    ConstantInt node instead of storing a plain int.
+ * ============================================================ */
+#line 11 "lexer.l"
+#include "parser.tab.h"   /* token codes + yylval type (llvm::Value*) */
+#include "codegen.h"      /* makeInt() helper                         */
 #include <stdlib.h>
 #include <stdio.h>
-#line 459 "lex.yy.c"
+#line 465 "lex.yy.cc"
 #define YY_NO_INPUT 1
-#line 461 "lex.yy.c"
+#line 467 "lex.yy.cc"
 
 #define INITIAL 0
 
@@ -672,10 +678,10 @@ YY_DECL
 		}
 
 	{
-#line 13 "lexer.l"
+#line 19 "lexer.l"
 
 
-#line 679 "lex.yy.c"
+#line 685 "lex.yy.cc"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -734,61 +740,61 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 15 "lexer.l"
-{ yylval.val = makeInt(atoi(yytext)); return INTEGER; }
+#line 21 "lexer.l"
+{ yylval = makeInt(atoi(yytext)); return INTEGER; }
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 17 "lexer.l"
+#line 23 "lexer.l"
 { return '+'; }
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 18 "lexer.l"
+#line 24 "lexer.l"
 { return '-'; }
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 19 "lexer.l"
+#line 25 "lexer.l"
 { return '*'; }
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 20 "lexer.l"
+#line 26 "lexer.l"
 { return '/'; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 21 "lexer.l"
+#line 27 "lexer.l"
 { return '('; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 22 "lexer.l"
+#line 28 "lexer.l"
 { return ')'; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 24 "lexer.l"
+#line 30 "lexer.l"
 { }
 	YY_BREAK
 case 9:
 /* rule 9 can match eol */
 YY_RULE_SETUP
-#line 26 "lexer.l"
+#line 32 "lexer.l"
 { return NEWLINE; }
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 28 "lexer.l"
-{ fprintf(stderr, "Lexer error: unknown char '%c'\n", yytext[0]); }
+#line 34 "lexer.l"
+{ fprintf(stderr, "Lexer error: unknown character '%c'\n", yytext[0]); }
 	YY_BREAK
 case 11:
 YY_RULE_SETUP
-#line 30 "lexer.l"
+#line 36 "lexer.l"
 ECHO;
 	YY_BREAK
-#line 792 "lex.yy.c"
+#line 798 "lex.yy.cc"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -1756,5 +1762,5 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 30 "lexer.l"
+#line 36 "lexer.l"
 

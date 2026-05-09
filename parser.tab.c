@@ -67,17 +67,22 @@
 
 
 /* First part of user prologue.  */
-#line 21 "parser.y"
+#line 1 "parser.y"
 
-/* ---- C/C++ prologue ---------------------------------------- */
-#include <stdio.h>
-#include <stdlib.h>
+/* llvm_includes.h first — same rule as lexer.l */
+#include "llvm_includes.h"
+#include <cstdio>
+#include <cstdlib>
 
-/* Declarations for functions defined in the generated lexer    */
+/* LLVM global singletons — extern-declared in codegen.h */
+std::unique_ptr<llvm::LLVMContext> TheContext;
+std::unique_ptr<llvm::Module>      TheModule;
+std::unique_ptr<llvm::IRBuilder<>> Builder;
+
 int  yylex   (void);
-void yyerror (const char *s);
+void yyerror (const char* s) { fprintf(stderr, "Parser error: %s\n", s); }
 
-#line 81 "parser.tab.c"
+#line 86 "parser.tab.c"
 
 # ifndef YY_CAST
 #  ifdef __cplusplus
@@ -109,12 +114,12 @@ enum yysymbol_kind_t
   YYSYMBOL_YYerror = 1,                    /* error  */
   YYSYMBOL_YYUNDEF = 2,                    /* "invalid token"  */
   YYSYMBOL_INTEGER = 3,                    /* INTEGER  */
-  YYSYMBOL_4_ = 4,                         /* '+'  */
-  YYSYMBOL_5_ = 5,                         /* '-'  */
-  YYSYMBOL_6_ = 6,                         /* '*'  */
-  YYSYMBOL_7_ = 7,                         /* '/'  */
-  YYSYMBOL_UMINUS = 8,                     /* UMINUS  */
-  YYSYMBOL_9_n_ = 9,                       /* '\n'  */
+  YYSYMBOL_NEWLINE = 4,                    /* NEWLINE  */
+  YYSYMBOL_5_ = 5,                         /* '+'  */
+  YYSYMBOL_6_ = 6,                         /* '-'  */
+  YYSYMBOL_7_ = 7,                         /* '*'  */
+  YYSYMBOL_8_ = 8,                         /* '/'  */
+  YYSYMBOL_UMINUS = 9,                     /* UMINUS  */
   YYSYMBOL_10_ = 10,                       /* '('  */
   YYSYMBOL_11_ = 11,                       /* ')'  */
   YYSYMBOL_YYACCEPT = 12,                  /* $accept  */
@@ -448,7 +453,7 @@ union yyalloc
 /* YYFINAL -- State number of the termination state.  */
 #define YYFINAL  2
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   39
+#define YYLAST   28
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  12
@@ -460,7 +465,7 @@ union yyalloc
 #define YYNSTATES  21
 
 /* YYMAXUTOK -- Last valid token kind.  */
-#define YYMAXUTOK   259
+#define YYMAXUTOK   260
 
 
 /* YYTRANSLATE(TOKEN-NUM) -- Symbol number corresponding to TOKEN-NUM
@@ -475,13 +480,10 @@ union yyalloc
 static const yytype_int8 yytranslate[] =
 {
        0,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       9,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-      10,    11,     6,     4,     2,     5,     2,     7,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+      10,    11,     7,     5,     2,     6,     2,     8,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
@@ -499,15 +501,19 @@ static const yytype_int8 yytranslate[] =
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
        2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
-       2,     2,     2,     2,     2,     2,     1,     2,     3,     8
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     2,     2,     2,     2,
+       2,     2,     2,     2,     2,     2,     1,     2,     3,     4,
+       9
 };
 
 #if YYDEBUG
 /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    82,    82,    83,    90,    91,   100,   102,   103,   104,
-     105,   115,   120
+       0,    31,    31,    32,    36,    37,    47,    48,    49,    50,
+      51,    52,    53
 };
 #endif
 
@@ -523,8 +529,8 @@ static const char *yysymbol_name (yysymbol_kind_t yysymbol) YY_ATTRIBUTE_UNUSED;
    First, the terminals, then, starting at YYNTOKENS, nonterminals.  */
 static const char *const yytname[] =
 {
-  "\"end of file\"", "error", "\"invalid token\"", "INTEGER", "'+'",
-  "'-'", "'*'", "'/'", "UMINUS", "'\\n'", "'('", "')'", "$accept", "input",
+  "\"end of file\"", "error", "\"invalid token\"", "INTEGER", "NEWLINE",
+  "'+'", "'-'", "'*'", "'/'", "UMINUS", "'('", "')'", "$accept", "input",
   "line", "expr", YY_NULLPTR
 };
 
@@ -535,7 +541,7 @@ yysymbol_name (yysymbol_kind_t yysymbol)
 }
 #endif
 
-#define YYPACT_NINF (-5)
+#define YYPACT_NINF (-6)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -549,9 +555,9 @@ yysymbol_name (yysymbol_kind_t yysymbol)
    STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      -5,    11,    -5,    -5,    23,    -5,    23,    -5,    30,    -5,
-      18,    23,    23,    23,    23,    -5,    -5,    -3,    -3,    -5,
-      -5
+      -6,    11,    -6,    -6,    -6,    10,    10,    -6,    -2,    -6,
+      17,    -6,    10,    10,    10,    10,    -6,    19,    19,    -6,
+      -6
 };
 
 /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -559,15 +565,15 @@ static const yytype_int8 yypact[] =
    means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       2,     0,     1,     6,     0,     4,     0,     3,     0,    12,
-       0,     0,     0,     0,     0,     5,    11,     7,     8,     9,
+       2,     0,     1,     6,     4,     0,     0,     3,     0,    12,
+       0,     5,     0,     0,     0,     0,    11,     7,     8,     9,
       10
 };
 
 /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -5,    -5,    -5,    -4
+      -6,    -6,    -6,    -5
 };
 
 /* YYDEFGOTO[NTERM-NUM].  */
@@ -581,26 +587,24 @@ static const yytype_int8 yydefgoto[] =
    number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-       9,     0,    10,    13,    14,     0,     0,    17,    18,    19,
-      20,     2,     0,     0,     3,     0,     4,     0,     0,     0,
-       5,     6,    11,    12,    13,    14,     3,     0,     4,    16,
-       0,     0,     0,     6,    11,    12,    13,    14,     0,    15
+       9,    10,    11,    12,    13,    14,    15,    17,    18,    19,
+      20,     2,     0,     3,     3,     4,     5,     5,     0,     0,
+       6,     6,    12,    13,    14,    15,    14,    15,    16
 };
 
 static const yytype_int8 yycheck[] =
 {
-       4,    -1,     6,     6,     7,    -1,    -1,    11,    12,    13,
-      14,     0,    -1,    -1,     3,    -1,     5,    -1,    -1,    -1,
-       9,    10,     4,     5,     6,     7,     3,    -1,     5,    11,
-      -1,    -1,    -1,    10,     4,     5,     6,     7,    -1,     9
+       5,     6,     4,     5,     6,     7,     8,    12,    13,    14,
+      15,     0,    -1,     3,     3,     4,     6,     6,    -1,    -1,
+      10,    10,     5,     6,     7,     8,     7,     8,    11
 };
 
 /* YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
    state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,    13,     0,     3,     5,     9,    10,    14,    15,    15,
-      15,     4,     5,     6,     7,     9,    11,    15,    15,    15,
+       0,    13,     0,     3,     4,     6,    10,    14,    15,    15,
+      15,     4,     5,     6,     7,     8,    11,    15,    15,    15,
       15
 };
 
@@ -1078,63 +1082,66 @@ yyreduce:
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
-  case 5: /* line: expr '\n'  */
-#line 91 "parser.y"
-                        { printf("= %d\n", (yyvsp[-1].ival)); }
-#line 1085 "parser.tab.c"
+  case 5: /* line: expr NEWLINE  */
+#line 37 "parser.y"
+                    {
+        llvm::Function*    printfFn = TheModule->getFunction("printf");
+        llvm::FunctionCallee printfCallee(printfFn->getFunctionType(), printfFn);
+        llvm::Value*       fmt = Builder->CreateGlobalStringPtr("%d\n", "fmt");
+        std::vector<llvm::Value*> args = { fmt, (yyvsp[-1].val) };
+        Builder->CreateCall(printfCallee, args);
+      }
+#line 1095 "parser.tab.c"
     break;
 
   case 6: /* expr: INTEGER  */
-#line 100 "parser.y"
-                            { (yyval.ival) = (yyvsp[0].ival); }
-#line 1091 "parser.tab.c"
+#line 47 "parser.y"
+                            { (yyval.val) = (yyvsp[0].val); }
+#line 1101 "parser.tab.c"
     break;
 
   case 7: /* expr: expr '+' expr  */
-#line 102 "parser.y"
-                            { (yyval.ival) = (yyvsp[-2].ival) + (yyvsp[0].ival); }
-#line 1097 "parser.tab.c"
+#line 48 "parser.y"
+                            { (yyval.val) = Builder->CreateAdd ((yyvsp[-2].val), (yyvsp[0].val), "addtmp"); }
+#line 1107 "parser.tab.c"
     break;
 
   case 8: /* expr: expr '-' expr  */
-#line 103 "parser.y"
-                            { (yyval.ival) = (yyvsp[-2].ival) - (yyvsp[0].ival); }
-#line 1103 "parser.tab.c"
+#line 49 "parser.y"
+                            { (yyval.val) = Builder->CreateSub ((yyvsp[-2].val), (yyvsp[0].val), "subtmp"); }
+#line 1113 "parser.tab.c"
     break;
 
   case 9: /* expr: expr '*' expr  */
-#line 104 "parser.y"
-                            { (yyval.ival) = (yyvsp[-2].ival) * (yyvsp[0].ival); }
-#line 1109 "parser.tab.c"
+#line 50 "parser.y"
+                            { (yyval.val) = Builder->CreateMul ((yyvsp[-2].val), (yyvsp[0].val), "multmp"); }
+#line 1119 "parser.tab.c"
     break;
 
   case 10: /* expr: expr '/' expr  */
-#line 105 "parser.y"
-                            {
-                                if ((yyvsp[0].ival) == 0) {
-                                    yyerror("division by zero");
-                                    (yyval.ival) = 0;
-                                } else {
-                                    (yyval.ival) = (yyvsp[-2].ival) / (yyvsp[0].ival);
-                                }
-                            }
-#line 1122 "parser.tab.c"
+#line 51 "parser.y"
+                            { (yyval.val) = Builder->CreateSDiv((yyvsp[-2].val), (yyvsp[0].val), "divtmp"); }
+#line 1125 "parser.tab.c"
     break;
 
   case 11: /* expr: '(' expr ')'  */
-#line 115 "parser.y"
-                            { (yyval.ival) = (yyvsp[-1].ival); }
-#line 1128 "parser.tab.c"
+#line 52 "parser.y"
+                            { (yyval.val) = (yyvsp[-1].val); }
+#line 1131 "parser.tab.c"
     break;
 
   case 12: /* expr: '-' expr  */
-#line 120 "parser.y"
-                              { (yyval.ival) = -(yyvsp[0].ival); }
-#line 1134 "parser.tab.c"
+#line 53 "parser.y"
+                             {
+        llvm::Value* zero = llvm::ConstantInt::get(
+            *TheContext, llvm::APInt(32, 0, true));
+        (yyval.val) = Builder->CreateSub(zero, (yyvsp[0].val), "negtmp");
+      }
+#line 1141 "parser.tab.c"
     break;
 
 
-#line 1138 "parser.tab.c"
+#line 1145 "parser.tab.c"
 
       default: break;
     }
@@ -1327,25 +1334,54 @@ yyreturnlab:
   return yyresult;
 }
 
-#line 123 "parser.y"
+#line 60 "parser.y"
 
-/* ==============================================================
- * User code section
- * ============================================================== */
 
-/* yyerror is called by the Bison-generated parser whenever a
- * syntax error is detected.                                     */
-void yyerror(const char *s) {
-    fprintf(stderr, "Parser error: %s\n", s);
-}
+int main() {
+    /* 1. Initialise LLVM */
+    TheContext = std::make_unique<llvm::LLVMContext>();
+    TheModule  = std::make_unique<llvm::Module>("calc_module", *TheContext);
+    Builder    = std::make_unique<llvm::IRBuilder<>>(*TheContext);
 
-/* main() is the program entry point.
- * yyparse() drives the parser; it calls yylex() internally
- * every time it needs the next token.                          */
-int main(void) {
-    printf("Arithmetic Expression Evaluator\n");
-    printf("Enter an expression (e.g.  3 + 4 * 2) and press Enter.\n");
-    printf("Press Ctrl-D (EOF) to exit.\n\n");
+    /* 2. Define i32 @main() with an entry BasicBlock */
+    llvm::FunctionType* mainTy =
+        llvm::FunctionType::get(llvm::Type::getInt32Ty(*TheContext), false);
+    llvm::Function* mainFn =
+        llvm::Function::Create(mainTy, llvm::Function::ExternalLinkage,
+                               "main", *TheModule);
+    llvm::BasicBlock* entry =
+        llvm::BasicBlock::Create(*TheContext, "entry", mainFn);
+    Builder->SetInsertPoint(entry);
+
+    /* 3. Declare printf:  i32 @printf(ptr, ...) */
+    llvm::FunctionType* printfTy =
+        llvm::FunctionType::get(
+            llvm::Type::getInt32Ty(*TheContext),
+            { llvm::PointerType::getUnqual(*TheContext) },
+            /*isVarArg=*/true);
+    TheModule->getOrInsertFunction("printf", printfTy);
+
+    /* 4. Parse — grammar actions emit IR */
     yyparse();
+
+    /* 5. ret i32 0 */
+    Builder->CreateRet(
+        llvm::ConstantInt::get(*TheContext, llvm::APInt(32, 0, true)));
+
+    /* 6. Verify */
+    std::string errStr;
+    llvm::raw_string_ostream errStream(errStr);
+    if (llvm::verifyModule(*TheModule, &errStream)) {
+        fprintf(stderr, "Module verification failed:\n%s\n", errStr.c_str());
+        return 1;
+    }
+
+    /* 7. Write output.ll */
+    std::error_code EC;
+    llvm::raw_fd_ostream out("output.ll", EC, llvm::sys::fs::OF_Text);
+    if (EC) { fprintf(stderr, "Cannot open output.ll: %s\n", EC.message().c_str()); return 1; }
+    TheModule->print(out, nullptr);
+    fprintf(stderr, "IR written to output.ll\n");
+    fprintf(stderr, "Run with:  lli-15 output.ll\n");
     return 0;
 }
