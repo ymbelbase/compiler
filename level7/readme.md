@@ -20,6 +20,8 @@ x = 5;
 x + 3;
 ```
 
+### ctrl+d (linux) or ctrl+z (windows)........for mac probably ctrl+d
+
 ## Clean
 ```bash
 make clean
